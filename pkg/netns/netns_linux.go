@@ -41,7 +41,7 @@ import (
 
 	"github.com/containerd/containerd/mount"
 	cnins "github.com/containernetworking/plugins/pkg/ns"
-	"github.com/docker/docker/pkg/symlink"
+	"github.com/moby/sys/symlink"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )

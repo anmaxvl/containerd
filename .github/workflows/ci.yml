@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.15.2]
+        go-version: [1.15.5]
         os: [ubuntu-18.04, macos-10.15, windows-2019]
 
     steps:
@@ -36,7 +36,7 @@ jobs:
 
       - uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.29
+          version: v1.29.0
           working-directory: src/github.com/containerd/containerd
           args: --timeout=5m
 
@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.15.2'
+          go-version: '1.15.5'
 
       - uses: actions/checkout@v2
         with:
@@ -106,7 +106,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.15.2'
+          go-version: '1.15.5'
 
       - name: Set env
         shell: bash
@@ -139,7 +139,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.15.2'
+          go-version: '1.15.5'
 
       - name: Set env
         shell: bash
@@ -174,7 +174,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.15.2'
+          go-version: '1.15.5'
 
       - uses: actions/checkout@v2
         with:
@@ -220,7 +220,7 @@ jobs:
   integration-linux:
     name: Linux Integration
     runs-on: ubuntu-18.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: [project, linters, protos, man]
 
     strategy:
@@ -236,16 +236,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.15.2'
-
-      - name: Setup gosu
-        run: |
-          GOSU=/usr/local/bin/gosu
-          arch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"
-          sudo wget -O ${GOSU} "https://github.com/tianon/gosu/releases/download/1.12/gosu-$arch"
-          sudo chmod +x ${GOSU}
-          sudo chown root ${GOSU}
-          sudo chmod +s ${GOSU}
+          go-version: '1.15.5'
 
       - uses: actions/checkout@v2
         with:
@@ -260,10 +251,10 @@ jobs:
         env:
           RUNC_FLAVOR: ${{ matrix.runc }}
         run: |
-          sudo PATH=$PATH script/setup/install-seccomp
-          gosu root script/setup/install-runc
-          gosu root script/setup/install-cni
-          gosu root script/setup/install-critools
+          sudo -E PATH=$PATH script/setup/install-seccomp
+          sudo -E PATH=$PATH script/setup/install-runc
+          sudo -E PATH=$PATH script/setup/install-cni
+          sudo -E PATH=$PATH script/setup/install-critools
         working-directory: src/github.com/containerd/containerd
 
       - name: Install criu
@@ -311,8 +302,10 @@ jobs:
         working-directory: src/github.com/containerd/containerd
 
       - name: CRI Integration Test
+        env:
+          TEST_RUNTIME: ${{ matrix.runtime }}
         run: |
-          make cri-integration
+          CONTAINERD_RUNTIME=$TEST_RUNTIME make cri-integration
         working-directory: src/github.com/containerd/containerd
 
       - name: cri-tools critest
@@ -323,10 +316,10 @@ jobs:
           mkdir -p ${BDIR}/{root,state}
           cat > ${BDIR}/config.toml <<EOF
             [plugins.cri.containerd.default_runtime]
-              runtime_type = \"${TEST_RUNTIME}\"
+              runtime_type = "${TEST_RUNTIME}"
           EOF
           ls /etc/cni/net.d
-          sudo PATH=$PATH BDIR=$BDIR /usr/local/bin/containerd -a ${BDIR}/c.sock -root ${BDIR}/root -state ${BDIR}/state -log-level debug &> ${BDIR}/containerd-cri.log &
+          sudo PATH=$PATH BDIR=$BDIR /usr/local/bin/containerd -a ${BDIR}/c.sock --config ${BDIR}/config.toml --root ${BDIR}/root --state ${BDIR}/state --log-level debug &> ${BDIR}/containerd-cri.log &
           sudo PATH=$PATH BDIR=$BDIR /usr/local/bin/ctr -a ${BDIR}/c.sock version
           sudo PATH=$PATH BDIR=$BDIR GOPATH=$GOPATH critest --runtime-endpoint=unix:///${BDIR}/c.sock --parallel=8
           TEST_RC=$?
@@ -354,15 +347,11 @@ jobs:
       - name: Integration
         env:
           RUNC_FLAVOR: ${{ matrix.runc }}
-          # SELinux: replace Permissive with Enforcing after https://github.com/containers/container-selinux/pull/98
-          # is merged and the package becomes generally available.
-          SELINUX: Permissive
+          SELINUX: Enforcing
         run: vagrant up --provision-with=selinux,install-runc,test-integration
 
       - name: CRI test
         env:
           RUNC_FLAVOR: ${{ matrix.runc }}
-          # SELinux: replace Permissive with Enforcing after https://github.com/containers/container-selinux/pull/98
-          # is merged and the package becomes generally available.
-          SELINUX: Permissive
+          SELINUX: Enforcing
         run: vagrant up --provision-with=selinux,install-runc,test-cri

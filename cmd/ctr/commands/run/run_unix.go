@@ -27,9 +27,11 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cmd/ctr/commands"
+	"github.com/containerd/containerd/contrib/apparmor"
 	"github.com/containerd/containerd/contrib/nvidia"
 	"github.com/containerd/containerd/contrib/seccomp"
 	"github.com/containerd/containerd/oci"
+	crioptions "github.com/containerd/containerd/pkg/cri/runtimeoptions/v1"
 	"github.com/containerd/containerd/platforms"
 	"github.com/containerd/containerd/runtime/v2/runc/options"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -205,6 +207,17 @@ func NewContainer(ctx gocontext.Context, client *containerd.Client, context *cli
 			}
 		}
 
+		if s := context.String("apparmor-default-profile"); len(s) > 0 {
+			opts = append(opts, apparmor.WithDefaultProfile(s))
+		}
+
+		if s := context.String("apparmor-profile"); len(s) > 0 {
+			if len(context.String("apparmor-default-profile")) > 0 {
+				return nil, fmt.Errorf("apparmor-profile conflicts with apparmor-default-profile")
+			}
+			opts = append(opts, apparmor.WithProfile(s))
+		}
+
 		if cpus := context.Float64("cpus"); cpus > 0.0 {
 			var (
 				period = uint64(100000)
@@ -300,6 +313,12 @@ func getRuntimeOptions(context *cli.Context) (interface{}, error) {
 
 	if context.String("runtime") == "io.containerd.runc.v2" {
 		return getRuncOptions(context)
+	}
+
+	if configPath := context.String("runtime-config-path"); configPath != "" {
+		return &crioptions.Options{
+			ConfigPath: configPath,
+		}, nil
 	}
 
 	return nil, nil

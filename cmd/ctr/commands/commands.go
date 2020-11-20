@@ -123,6 +123,10 @@ var (
 			Usage: "runtime name",
 			Value: defaults.DefaultRuntime,
 		},
+		cli.StringFlag{
+			Name:  "runtime-config-path",
+			Usage: "optional runtime config path",
+		},
 		cli.BoolFlag{
 			Name:  "tty,t",
 			Usage: "allocate a TTY for the container",
@@ -158,6 +162,14 @@ var (
 		cli.StringFlag{
 			Name:  "seccomp-profile",
 			Usage: "file path to custom seccomp profile. seccomp must be set to true, before using seccomp-profile",
+		},
+		cli.StringFlag{
+			Name:  "apparmor-default-profile",
+			Usage: "enable AppArmor with the default profile with the specified name, e.g. \"cri-containerd.apparmor.d\"",
+		},
+		cli.StringFlag{
+			Name:  "apparmor-profile",
+			Usage: "enable AppArmor with an existing custom profile",
 		},
 	}
 )
